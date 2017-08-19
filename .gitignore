@@ -1,0 +1,7 @@
+.idea
+mysql.log
+vendor
+rel
+.DS_Store
+test
+db2file
