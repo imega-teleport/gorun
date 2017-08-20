@@ -1,11 +1,11 @@
 package writer
 
 import (
-	"os"
 	"fmt"
-	"google.golang.org/appengine/file"
+	"os"
 )
 
+// Writer is interface
 type Writer interface {
 	Listen(in <-chan string)
 }
@@ -14,9 +14,9 @@ type writerFiles struct {
 	path   string
 	count  int
 	prefix string
-	File   os.File
 }
 
+// NewWriter get new instance
 func NewWriter(PrefixFileName string, path string) Writer {
 	return &writerFiles{
 		path:   path,
@@ -24,19 +24,26 @@ func NewWriter(PrefixFileName string, path string) Writer {
 	}
 }
 
-func (w *writerFiles) Listen(in <-chan string) {
+func (w *writerFiles) Listen(in <-chan string, errOut chan<- error) {
 	for v := range in {
-		file, _ := os.Create(fmt.Sprintf("%s%c%s_%d.sql", w.path, os.PathSeparator, w.prefix, w.count))
-		/*if err != nil {
-			fmt.Printf("Could not create file: %s", err)
-			os.Exit(1)
-		}*/
-		defer func() {
-			file.Close()
-			/*if err := file.Close(); err != nil {
-				fmt.Printf("Fail close file: %s", err)
-				os.Exit(1)
-			}*/
-		}()
+		w.count++
+		fileName := fmt.Sprintf("%s%c%s_%d.sql", w.path, os.PathSeparator, w.prefix, w.count)
+		errOut <- writeFile(fileName, v)
+	}
+}
+
+func writeFile(fileName, content string) error {
+	file, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if err := file.Close(); err != nil {
+			return err
+		}
+	}()
+	_, err := file.WriteString(in)
+	if err != nil {
+		return err
 	}
 }
