@@ -7,7 +7,7 @@ import (
 
 // Writer is interface
 type Writer interface {
-	Listen(in <-chan string)
+	Listen(in <-chan string, errOut chan<- error)
 }
 
 type writerFiles struct {
@@ -32,18 +32,14 @@ func (w *writerFiles) Listen(in <-chan string, errOut chan<- error) {
 	}
 }
 
-func writeFile(fileName, content string) error {
+func writeFile(fileName, content string) (err error) {
 	file, err := os.Create(fileName)
 	if err != nil {
-		return err
+		return
 	}
 	defer func() {
-		if err := file.Close(); err != nil {
-			return err
-		}
+		err = file.Close()
 	}()
-	_, err := file.WriteString(in)
-	if err != nil {
-		return err
-	}
+	_, err = file.WriteString(content)
+	return
 }

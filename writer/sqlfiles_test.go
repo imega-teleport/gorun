@@ -1,13 +1,24 @@
 package writer
 
 import (
+	"io/ioutil"
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
 )
 
 func TestSqlFiles_writeFile(t *testing.T) {
+	fileName := "/tmp/testsqlfiles_writefile"
+	expected := "content"
+	err := writeFile(fileName, expected)
+	assert.NoError(t, err)
 
-	writeFile("/tmp/testsqlfiles_writefile", "content")
-	assert.NoError(t)
+	data, err := ioutil.ReadFile(fileName)
+	assert.NoError(t, err)
+
+	assert.Equal(t, expected, string(data))
+
+	err = os.Remove(fileName)
+	assert.NoError(t, err)
 }

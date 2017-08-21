@@ -37,10 +37,16 @@ func main() {
 
 	s := storage.NewStorage(db)
 
-	groupChan := make(chan interface{}, 10)
+	dataChan := make(chan interface{}, 10)
 	errChan := make(chan error)
 
-	go s.GetGroups(groupChan, errChan)
+	go func() {
+		s.GetGroups(dataChan, errChan)
+	}()
+
+	go func() {
+		s.GetProducts(dataChan, errChan)
+	}()
 
 	printer(groupChan)
 }
