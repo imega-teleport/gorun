@@ -5,11 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"time"
+	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/imega-teleport/gorun/storage"
 	log "github.com/sirupsen/logrus"
+	"time"
 )
 
 func main() {
@@ -35,35 +36,49 @@ func main() {
 		fmt.Println("Closed db connection")
 	}()
 
-	s := storage.NewStorage(db)
+	wg := &sync.WaitGroup{}
+	s := storage.NewStorage(db, wg)
 
 	dataChan := make(chan interface{}, 10)
-	errChan := make(chan error)
+	errChan := make(chan error, 1)
 
+	wg.Add(1)
 	go func() {
 		s.GetGroups(dataChan, errChan)
 	}()
 
+	wg.Add(1)
 	go func() {
 		s.GetProducts(dataChan, errChan)
 	}()
 
-	printer(groupChan)
-}
+	go func() {
+		err := errHandle(errChan)
+		if err != nil {
+			log.Fatalf("%s", err)
+		}
+	}()
 
-var groups = struct {
-	items  []storage.Group
-	length int
-}{}
+	printer(dataChan)
+
+	wg.Wait()
+}
 
 func printer(in <-chan interface{}) {
 	for v := range in {
 		time.Sleep(time.Second)
-
-		groups.length = groups.length + len(v.(storage.Group).ID) + len(v.(storage.Group).Name) + len(v.(storage.Group).ParentID)
-
-		groups.items = append(groups.items, v.(storage.Group))
-		//fmt.Println(groups)
-		fmt.Println(groups.length)
+		switch v.(type) {
+		case storage.Product:
+			fmt.Println("Product: ", v.(storage.Product).Name)
+		case storage.Group:
+			fmt.Println("Group: ", v.(storage.Group).Name)
+		}
 	}
+}
+
+func errHandle(in <-chan error) error {
+	for v := range in {
+		return v
+	}
+	return nil
 }

@@ -20,11 +20,11 @@ func New(maxBytes int) 	Packer {
 }
 
 func (p *pkg) Listen(in <-chan interface{}, out <-chan error) {
-	for v := range in {
+	/*for v := range in {
 
 		teleport.
 			fmt.Println(groups.length)
-	}
+	}*/
 }
 
 func (p *pkg) IsFull(pack teleport.Package) bool {
