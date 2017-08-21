@@ -2,7 +2,7 @@ package storage
 
 import (
 	"database/sql"
-	"sync"
+	//"sync"
 )
 
 type Storage interface {
@@ -12,12 +12,12 @@ type Storage interface {
 
 type storage struct {
 	db *sql.DB
-	wg *sync.WaitGroup
+	//wg *sync.WaitGroup
 }
 
-func NewStorage(db *sql.DB, wg *sync.WaitGroup) Storage {
+func NewStorage(db *sql.DB) Storage {
 	return &storage{
 		db: db,
-		wg: wg,
+		//wg: wg,
 	}
 }

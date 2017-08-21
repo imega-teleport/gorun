@@ -4,18 +4,16 @@ import (
 	"database/sql"
 	"fmt"
 	"os"
-
 	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/imega-teleport/gorun/storage"
 	log "github.com/sirupsen/logrus"
-	"time"
 )
 
 func main() {
 	log.Info("Start")
-	dsn := fmt.Sprintf("mysql://%s:%s@tcp(%s)/%s", "", "", "10.0.3.102:3306", "test_teleport")
+	dsn := fmt.Sprintf("mysql://%s:%s@tcp(%s)/%s", "", "", "10.0.3.32:3306", "test_teleport")
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		fmt.Printf("error: %s", err)
@@ -36,19 +34,22 @@ func main() {
 		fmt.Println("Closed db connection")
 	}()
 
-	wg := &sync.WaitGroup{}
-	s := storage.NewStorage(db, wg)
+	//wg := &sync.WaitGroup{}
+	var wg sync.WaitGroup
+	s := storage.NewStorage(db)
 
 	dataChan := make(chan interface{}, 10)
 	errChan := make(chan error, 1)
 
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		s.GetGroups(dataChan, errChan)
 	}()
 
 	wg.Add(1)
 	go func() {
+		defer wg.Done()
 		s.GetProducts(dataChan, errChan)
 	}()
 
@@ -59,14 +60,19 @@ func main() {
 		}
 	}()
 
-	printer(dataChan)
+	go printer(dataChan)
 
+	//go func() {
+	//
+	//	fmt.Println("=====")
+	//	close(dataChan)
+	//	}()
 	wg.Wait()
 }
 
 func printer(in <-chan interface{}) {
 	for v := range in {
-		time.Sleep(time.Second)
+		//time.Sleep(time.Second)
 		switch v.(type) {
 		case storage.Product:
 			fmt.Println("Product: ", v.(storage.Product).Name)

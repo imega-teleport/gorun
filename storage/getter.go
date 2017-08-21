@@ -29,5 +29,5 @@ func (s *storage) getRecords(out chan<- interface{}, e chan error, dql string, s
 			break
 		}
 	}
-	s.wg.Done()
+	//s.wg.Done()
 }
