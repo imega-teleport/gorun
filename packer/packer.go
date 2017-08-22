@@ -1,10 +1,15 @@
 package packer
 
-import "github.com/imega-teleport/gorun/teleport"
+import (
+	"fmt"
+
+	"github.com/imega-teleport/gorun/storage"
+	"github.com/imega-teleport/gorun/teleport"
+)
 
 // Packer is interface
 type Packer interface {
-	Listen(in <-chan interface{}, out <-chan error)
+	Listen(in <-chan interface{}, e chan<- error)
 }
 
 type pkg struct {
@@ -13,18 +18,31 @@ type pkg struct {
 }
 
 // New instance packer
-func New(maxBytes int) 	Packer {
+func New(maxBytes int) Packer {
 	return &pkg{
 		MaxBytes: maxBytes,
 	}
 }
 
-func (p *pkg) Listen(in <-chan interface{}, out <-chan error) {
-	/*for v := range in {
+func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
+	for v := range in {
+		if p.IsFull(p.Pack) {
+			pack := teleport.Package{}
+			p.Pack = pack
+		}
 
-		teleport.
-			fmt.Println(groups.length)
-	}*/
+		switch v.(type) {
+		case storage.Product:
+			fmt.Println("Product: ", v.(storage.Product).Name)
+		case storage.Group:
+			p.Pack.AddItem(teleport.Term{
+				ID:    v.(storage.Group).ID,
+				Name:  v.(storage.Group).Name,
+				Slug:  v.(storage.Group).Name,
+				Group: "0",
+			})
+		}
+	}
 }
 
 func (p *pkg) IsFull(pack teleport.Package) bool {

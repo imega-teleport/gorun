@@ -5,7 +5,7 @@ import (
 	"fmt"
 )
 
-func (s *storage) getRecords(out chan<- interface{}, e chan error, dql string, scan func(rows *sql.Rows) (interface{}, error)) {
+func (s *storage) getRecords(out chan<- interface{}, e chan<- error, dql string, scan func(rows *sql.Rows) (interface{}, error)) {
 	i := 0
 	for {
 		hasResults := false
@@ -29,5 +29,4 @@ func (s *storage) getRecords(out chan<- interface{}, e chan error, dql string, s
 			break
 		}
 	}
-	//s.wg.Done()
 }

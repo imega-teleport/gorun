@@ -3,43 +3,41 @@ package main
 import (
 	"database/sql"
 	"fmt"
-	"os"
 	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/imega-teleport/gorun/storage"
 	log "github.com/sirupsen/logrus"
+	"github.com/imega-teleport/gorun/packer"
 )
 
 func main() {
 	log.Info("Start")
-	dsn := fmt.Sprintf("mysql://%s:%s@tcp(%s)/%s", "", "", "10.0.3.32:3306", "test_teleport")
+	dsn := fmt.Sprintf("mysql://%s:%s@tcp(%s)/%s", "", "", "10.0.3.102:3306", "test_teleport")
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
-		fmt.Printf("error: %s", err)
-		os.Exit(1)
+		log.Fatalf("Could not connect db, %s", err)
 	}
 
 	err = db.Ping()
 	if err != nil {
-		fmt.Printf("error: %s", err)
-		os.Exit(1)
+		log.Fatalf("Fail ping db, %s", err)
 	}
 	defer func() {
 		err = db.Close()
 		if err != nil {
-			fmt.Printf("error: %s", err)
-			os.Exit(1)
+			log.Fatalf("Fail closes db connection, %s", err)
 		}
-		fmt.Println("Closed db connection")
+		log.Info("Closed db connection")
 	}()
 
-	//wg := &sync.WaitGroup{}
-	var wg sync.WaitGroup
+	wg := sync.WaitGroup{}
 	s := storage.NewStorage(db)
 
 	dataChan := make(chan interface{}, 10)
-	errChan := make(chan error, 1)
+	errChan := make(chan error)
+
+	p := packer.New(500)
 
 	wg.Add(1)
 	go func() {
@@ -54,37 +52,19 @@ func main() {
 	}()
 
 	go func() {
-		err := errHandle(errChan)
-		if err != nil {
-			log.Fatalf("%s", err)
-		}
+		p.Listen(dataChan, errChan)
 	}()
 
-	go printer(dataChan)
+	go func() {
+		wg.Wait()
+		close(dataChan)
+		close(errChan)
+	}()
 
-	//go func() {
-	//
-	//	fmt.Println("=====")
-	//	close(dataChan)
-	//	}()
-	wg.Wait()
-}
-
-func printer(in <-chan interface{}) {
-	for v := range in {
-		//time.Sleep(time.Second)
-		switch v.(type) {
-		case storage.Product:
-			fmt.Println("Product: ", v.(storage.Product).Name)
-		case storage.Group:
-			fmt.Println("Group: ", v.(storage.Group).Name)
-		}
+	if err := <-errChan; err != nil {
+		log.Fatalf("%s", err)
+		close(dataChan)
+		close(errChan)
+		return
 	}
-}
-
-func errHandle(in <-chan error) error {
-	for v := range in {
-		return v
-	}
-	return nil
 }
