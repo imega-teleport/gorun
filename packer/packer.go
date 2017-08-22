@@ -3,6 +3,8 @@ package packer
 import (
 	"fmt"
 
+	"time"
+
 	"github.com/imega-teleport/gorun/storage"
 	"github.com/imega-teleport/gorun/teleport"
 )
@@ -34,6 +36,16 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 		switch v.(type) {
 		case storage.Product:
 			fmt.Println("Product: ", v.(storage.Product).Name)
+			p.Pack.AddItem(teleport.Post{
+				ID:       1,
+				AuthorID: 1,
+				Date:     time.Now(),
+				Content:  v.(storage.Product).Description,
+				Title:    v.(storage.Product).Name,
+				Excerpt:  "",
+				Name:     v.(storage.Product).Name,
+				Modified: time.Now(),
+			})
 		case storage.Group:
 			p.Pack.AddItem(teleport.Term{
 				ID:    v.(storage.Group).ID,

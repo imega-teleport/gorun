@@ -2,6 +2,7 @@ package teleport
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"gopkg.in/Masterminds/squirrel.v1"
@@ -25,12 +26,18 @@ func (p *Package) AddItem(item interface{}) {
 	}
 }
 
+type uuid string
+
+func (id uuid) ToVar() string {
+	return "@" + strings.Replace(slugmaker.Make(string(id)), "-", "", -1)
+}
+
 type Wpwc struct {
 	Prefix string
 }
 
 type Term struct {
-	ID    string
+	ID    uuid
 	Name  string
 	Slug  string
 	Group string
@@ -44,7 +51,7 @@ var dateLen = 19
 var intLen = 5
 
 type Post struct {
-	ID       int
+	ID       uuid
 	AuthorID int
 	Date     time.Time
 	Content  string
