@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	slugmaker "github.com/gosimple/slug"
 	"gopkg.in/Masterminds/squirrel.v1"
 )
 
@@ -23,13 +24,20 @@ func (p *Package) AddItem(item interface{}) {
 	case Term:
 		p.Length = p.Length + item.(Term).SizeOf()
 		p.Term = append(p.Term, item.(Term))
+	case Post:
+		p.Length = p.Length + item.(Post).SizeOf()
+		p.Post = append(p.Post, item.(Post))
 	}
 }
 
-type uuid string
+type UUID string
 
-func (id uuid) ToVar() string {
+func (id UUID) ToVar() string {
 	return "@" + strings.Replace(slugmaker.Make(string(id)), "-", "", -1)
+}
+
+func (id UUID) String() string {
+	return strings.Replace(string(id), "-", "", -1)
 }
 
 type Wpwc struct {
@@ -37,7 +45,7 @@ type Wpwc struct {
 }
 
 type Term struct {
-	ID    uuid
+	ID    UUID
 	Name  string
 	Slug  string
 	Group string
@@ -51,7 +59,7 @@ var dateLen = 19
 var intLen = 5
 
 type Post struct {
-	ID       uuid
+	ID       UUID
 	AuthorID int
 	Date     time.Time
 	Content  string
@@ -61,8 +69,12 @@ type Post struct {
 	Modified time.Time
 }
 
+func (p Post) SizeOf() int {
+	return len(p.ID) + (dateLen * 4) + len(p.Name) + len(p.Title) + len(p.Content) + len(p.Excerpt)
+}
+
 type TeleportItem struct {
-	GUID string
+	GUID UUID
 	Type string
 	ID   int
 	Date time.Time
@@ -76,7 +88,19 @@ type builder struct {
 	squirrel.InsertBuilder
 }
 
-func (w *Wpwc) builderPost(prefix string) builder {
+func (w *Wpwc) BuilderTerm() builder {
+	return builder{
+		squirrel.Insert(w.Prefix+"terms").Columns("term_id", "name", "slug", "term_group"),
+	}
+}
+
+func (b *builder) AddTerm(t Term) {
+	*b = builder{
+		b.Values(squirrel.Expr(t.ID.ToVar()), t.Name, t.Slug, 0),
+	}
+}
+
+func (w *Wpwc) BuilderPost() builder {
 	return builder{
 		squirrel.Insert(fmt.Sprintf("%sposts", w.Prefix)).Columns(
 			"id",
@@ -89,6 +113,23 @@ func (w *Wpwc) builderPost(prefix string) builder {
 			"post_name",
 			"post_modified",
 			"post_modified_gmt",
+		),
+	}
+}
+
+func (b *builder) AddPost(post Post) {
+	*b = builder{
+		b.Values(
+			squirrel.Expr(post.ID.ToVar()),
+			squirrel.Expr("1"),
+			post.Date.String(),
+			post.Date.UTC().String(),
+			post.Content,
+			post.Title,
+			post.Excerpt,
+			post.Name,
+			post.Modified.String(),
+			post.Modified.UTC().String(),
 		),
 	}
 }

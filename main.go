@@ -37,7 +37,12 @@ func main() {
 	dataChan := make(chan interface{}, 10)
 	errChan := make(chan error)
 
-	p := packer.New(500)
+	p := packer.New(packer.Options{
+		MaxBytes        :500000,
+		PrefixFileName  :"out",
+		PathToSave      :"/tmp",
+		PrefixTableName :"",
+	})
 
 	wg.Add(1)
 	go func() {
@@ -57,6 +62,7 @@ func main() {
 
 	go func() {
 		wg.Wait()
+		p.SaveToFile()
 		close(dataChan)
 		close(errChan)
 	}()

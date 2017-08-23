@@ -8,6 +8,8 @@ import (
 // Writer is interface
 type Writer interface {
 	Listen(in <-chan string, errOut chan<- error)
+	WriteFile(fileName, content string) (err error)
+	GetFileName(count int) string
 }
 
 type writerFiles struct {
@@ -28,11 +30,11 @@ func (w *writerFiles) Listen(in <-chan string, errOut chan<- error) {
 	for v := range in {
 		w.count++
 		fileName := fmt.Sprintf("%s%c%s_%d.sql", w.path, os.PathSeparator, w.prefix, w.count)
-		errOut <- writeFile(fileName, v)
+		errOut <- w.WriteFile(fileName, v)
 	}
 }
 
-func writeFile(fileName, content string) (err error) {
+func (w *writerFiles) WriteFile(fileName, content string) (err error) {
 	file, err := os.Create(fileName)
 	if err != nil {
 		return
@@ -42,4 +44,8 @@ func writeFile(fileName, content string) (err error) {
 	}()
 	_, err = file.WriteString(content)
 	return
+}
+
+func (w *writerFiles) GetFileName(count int) string {
+	return fmt.Sprintf("%s%c%s_%d.sql", w.path, os.PathSeparator, w.prefix, count)
 }
