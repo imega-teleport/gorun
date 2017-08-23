@@ -6,9 +6,9 @@ import (
 	"sync"
 
 	_ "github.com/go-sql-driver/mysql"
+	"github.com/imega-teleport/gorun/packer"
 	"github.com/imega-teleport/gorun/storage"
 	log "github.com/sirupsen/logrus"
-	"github.com/imega-teleport/gorun/packer"
 )
 
 func main() {
@@ -38,10 +38,10 @@ func main() {
 	errChan := make(chan error)
 
 	p := packer.New(packer.Options{
-		MaxBytes        :500000,
-		PrefixFileName  :"out",
-		PathToSave      :"/tmp",
-		PrefixTableName :"",
+		MaxBytes:        500000,
+		PrefixFileName:  "out",
+		PathToSave:      "/tmp",
+		PrefixTableName: "",
 	})
 
 	wg.Add(1)
