@@ -87,7 +87,7 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 }
 
 func (p *pkg) IsFull(pack teleport.Package) bool {
-	return pack.Length >= p.Options.MaxBytes+500
+	return pack.Length >= p.Options.MaxBytes + p.Indexer.GetLength() + 500
 }
 
 func (p *pkg) SaveToFile() error {
@@ -96,6 +96,10 @@ func (p *pkg) SaveToFile() error {
 	fmt.Println(fileName)
 	wpwc := teleport.Wpwc{
 		Prefix: p.Options.PrefixTableName,
+	}
+
+	if len(p.Indexer.GetAll()) > 0 {
+
 	}
 
 	if len(p.Pack.Term) > 0 {
