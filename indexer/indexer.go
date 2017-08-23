@@ -24,7 +24,7 @@ func (i *idx) Get(uid string) int {
 
 func (i *idx) Set(uid string) {
 	if i.values[uid] == 0 {
-		i.length = i.length + len(uid) + 1
+		i.length = i.length + len(uid) + 12
 		i.values[uid] = len(i.values) + 1
 	}
 }

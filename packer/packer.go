@@ -30,6 +30,7 @@ type pkg struct {
 	Pack    teleport.Package
 	Indexer indexer.Indexer
 	PackQty int
+	Content string
 }
 
 // New instance packer
@@ -46,14 +47,14 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 		if p.IsFull(p.Pack) {
 			p.SaveToFile()
 			pack := teleport.Package{}
+			p.Content = ""
 			p.Pack = pack
 			p.PackQty++
 		}
 
 		switch v.(type) {
 		case storage.Product:
-			//fmt.Println("Product: ", v.(storage.Product).Name)
-			p.Indexer.Set(v.(storage.Product).ID)
+			p.Indexer.Set(teleport.UUID(v.(storage.Product).ID).String())
 			p.Pack.AddItem(teleport.Post{
 				ID:       teleport.UUID(v.(storage.Product).ID),
 				AuthorID: 1,
@@ -70,11 +71,11 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 				Date: time.Now(),
 			})
 		case storage.Group:
-			p.Indexer.Set(v.(storage.Group).ID)
+			p.Indexer.Set(teleport.UUID(v.(storage.Group).ID).String())
 			p.Pack.AddItem(teleport.Term{
 				ID:    teleport.UUID(v.(storage.Group).ID),
 				Name:  v.(storage.Group).Name,
-				Slug:  v.(storage.Group).Name,
+				Slug:  teleport.Slug(v.(storage.Group).Name),
 				Group: "0",
 			})
 			p.Pack.AddItem(teleport.TeleportItem{
@@ -87,7 +88,11 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 }
 
 func (p *pkg) IsFull(pack teleport.Package) bool {
-	return pack.Length >= p.Options.MaxBytes + p.Indexer.GetLength() + 500
+	return pack.Length >= p.Options.MaxBytes+p.Indexer.GetLength()+2000
+}
+
+func (p *pkg) AddContent(s string) {
+	p.Content = p.Content + s
 }
 
 func (p *pkg) SaveToFile() error {
@@ -98,8 +103,21 @@ func (p *pkg) SaveToFile() error {
 		Prefix: p.Options.PrefixTableName,
 	}
 
-	if len(p.Indexer.GetAll()) > 0 {
+	if p.PackQty == 1 {
+		p.AddContent("create table if not exists teleport_item(guid CHAR(32) NOT NULL,type CHAR(8) NOT NULL, id bigint, date datetime, KEY id (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
+	}
 
+	p.AddContent("start transaction;")
+	p.AddContent(fmt.Sprintf("set @max_term_id=(select max(term_id) from %sterms);", p.Options.PrefixTableName))
+	p.AddContent(fmt.Sprintf("set @max_term_taxonomy_id=(select max(term_taxonomy_id) from %sterm_taxonomy);", p.Options.PrefixTableName))
+	p.AddContent(fmt.Sprintf("set @max_post_id=(select max(id) from %sposts);", p.Options.PrefixTableName))
+	p.AddContent(fmt.Sprintf("set @author_id=%d;", 1)) //todo author
+
+
+	if len(p.Indexer.GetAll()) > 0 {
+		for k, v := range p.Indexer.GetAll() {
+			p.AddContent(fmt.Sprintf("set @%s=%d;", k, v))
+		}
 	}
 
 	if len(p.Pack.Term) > 0 {
@@ -107,17 +125,30 @@ func (p *pkg) SaveToFile() error {
 		for _, v := range p.Pack.Term {
 			builder.AddTerm(v)
 		}
-		fmt.Println(squirrel.DebugSqlizer(builder))
+		p.AddContent(fmt.Sprintf("%s;", squirrel.DebugSqlizer(builder)))
 	}
-
 
 	if len(p.Pack.Post) > 0 {
-		builder1 := wpwc.BuilderPost()
+		builder := wpwc.BuilderPost()
 		for _, v := range p.Pack.Post {
-			builder1.AddPost(v)
+			builder.AddPost(v)
 		}
-		fmt.Println(squirrel.DebugSqlizer(builder1))
+		p.AddContent(fmt.Sprintf("%s;", squirrel.DebugSqlizer(builder)))
 	}
+
+	if len(p.Indexer.GetAll()) > 0 {
+		builder := wpwc.BuilderTeleportItem()
+		for _, v := range p.Pack.TeleportItem {
+			builder.AddTeleportItem(v)
+		}
+		p.AddContent(fmt.Sprintf("%s;", squirrel.DebugSqlizer(builder)))
+	}
+
+	p.AddContent("commit;")
+	fmt.Printf("%s\n", p.Content)
+	//fmt.Println(p.Pack.Length)
+	//fmt.Println(p.Indexer.GetLength())
+
 	//w.WriteFile(fileName, content)
 	return nil
 }
