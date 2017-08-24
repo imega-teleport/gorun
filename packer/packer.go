@@ -9,13 +9,14 @@ import (
 	"github.com/imega-teleport/gorun/storage"
 	"github.com/imega-teleport/gorun/teleport"
 	"github.com/imega-teleport/gorun/writer"
-	squirrel "gopkg.in/Masterminds/squirrel.v1"
+	"gopkg.in/Masterminds/squirrel.v1"
 )
 
 // Packer is interface
 type Packer interface {
 	Listen(in <-chan interface{}, e chan<- error)
 	SaveToFile() error
+	SecondSaveToFile() error
 }
 
 type Options struct {
@@ -26,20 +27,22 @@ type Options struct {
 }
 
 type pkg struct {
-	Options     Options
-	PrimaryPack teleport.PrimaryPackage
-	SecondPack  teleport.SecondaryPackage
-	Indexer     indexer.Indexer
-	PackQty     int
-	Content     string
+	Options       Options
+	PrimaryPack   teleport.PrimaryPackage
+	SecondPack    teleport.SecondaryPackage
+	Indexer       indexer.Indexer
+	PackQty       int
+	SecondPackQty int
+	Content       string
 }
 
 // New instance packer
 func New(opt Options) Packer {
 	return &pkg{
-		Options: opt,
-		Indexer: indexer.NewIndexer(),
-		PackQty: 1,
+		Options:       opt,
+		Indexer:       indexer.NewIndexer(),
+		PackQty:       1,
+		SecondPackQty: 1,
 	}
 }
 
@@ -51,6 +54,13 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 			p.Content = ""
 			p.PrimaryPack = pack
 			p.PackQty++
+		}
+
+		if p.SecondIsFull(p.SecondPack) {
+			p.SecondSaveToFile()
+			pack := teleport.SecondaryPackage{}
+			p.SecondPack = pack
+			p.SecondPackQty++
 		}
 
 		switch v.(type) {
@@ -84,12 +94,22 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 				Type: "term",
 				Date: time.Now(),
 			})
+			p.SecondPack.AddItem(teleport.TermTaxonomy{
+				TermID:      teleport.UUID(v.(storage.Group).ID),
+				Taxonomy:    "product_cat",
+				Description: v.(storage.Group).Name,
+				Parent:      teleport.UUID(v.(storage.Group).ParentID),
+			})
 		}
 	}
 }
 
 func (p *pkg) IsFull(pack teleport.PrimaryPackage) bool {
 	return pack.Length >= p.Options.MaxBytes+p.Indexer.GetLength()+2000
+}
+
+func (p *pkg) SecondIsFull(pack teleport.SecondaryPackage) bool {
+	return pack.Length >= p.Options.MaxBytes+2000
 }
 
 func (p *pkg) AddContent(s string) {
@@ -113,7 +133,6 @@ func (p *pkg) SaveToFile() error {
 	p.AddContent(fmt.Sprintf("set @max_term_taxonomy_id=(select max(term_taxonomy_id) from %sterm_taxonomy);", p.Options.PrefixTableName))
 	p.AddContent(fmt.Sprintf("set @max_post_id=(select max(id) from %sposts);", p.Options.PrefixTableName))
 	p.AddContent(fmt.Sprintf("set @author_id=%d;", 1)) //todo author
-
 
 	if len(p.Indexer.GetAll()) > 0 {
 		for k, v := range p.Indexer.GetAll() {
@@ -151,5 +170,24 @@ func (p *pkg) SaveToFile() error {
 	//fmt.Println(p.Indexer.GetLength())
 
 	//w.WriteFile(fileName, content)
+	return nil
+}
+
+func (p *pkg) SecondSaveToFile() error {
+	w := writer.NewWriter(fmt.Sprintf("sec/%s", p.Options.PrefixFileName), p.Options.PathToSave)
+	fileName := w.GetFileName(p.SecondPackQty)
+	fmt.Println(fileName)
+	wpwc := teleport.Wpwc{
+		Prefix: p.Options.PrefixTableName,
+	}
+
+	if len(p.SecondPack.TermTaxonomy) > 0 {
+		builder := wpwc.BuilderTermTaxonomy()
+		for _, v := range p.SecondPack.TermTaxonomy {
+			builder.AddTermTaxonomy(v)
+		}
+		fmt.Println(squirrel.DebugSqlizer(builder))
+	}
+
 	return nil
 }

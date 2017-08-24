@@ -63,6 +63,7 @@ func main() {
 	go func() {
 		wg.Wait()
 		p.SaveToFile()
+		p.SecondSaveToFile()
 		close(dataChan)
 		close(errChan)
 	}()
