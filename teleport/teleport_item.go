@@ -26,6 +26,11 @@ func (w *Wpwc) BuilderTeleportItem() builder {
 
 func (b *builder) AddTeleportItem(i TeleportItem) {
 	*b = builder{
-		b.Values(i.GUID, i.Type, squirrel.Expr(fmt.Sprintf("@max_post_id+%s", i.GUID.ToVar())), i.Date.Format("2006-01-02 15:04:05")),
+		b.Values(
+			i.GUID,
+			i.Type,
+			squirrel.Expr(fmt.Sprintf("@max_post_id+%s", i.GUID.ToVar())),
+			i.Date.Format("2006-01-02 15:04:05"),
+		),
 	}
 }

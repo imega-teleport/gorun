@@ -137,9 +137,9 @@ func (p *pkg) SaveToFile() error {
 	}
 
 	p.AddContent("start transaction;")
-	p.AddContent(fmt.Sprintf("set @max_term_id=(select max(term_id) from %sterms);", p.Options.PrefixTableName))
-	p.AddContent(fmt.Sprintf("set @max_term_taxonomy_id=(select max(term_taxonomy_id) from %sterm_taxonomy);", p.Options.PrefixTableName))
-	p.AddContent(fmt.Sprintf("set @max_post_id=(select max(id) from %sposts);", p.Options.PrefixTableName))
+	p.AddContent(fmt.Sprintf("set @max_term_id=(select ifnull(max(term_id),0)from %sterms);", p.Options.PrefixTableName))
+	p.AddContent(fmt.Sprintf("set @max_term_taxonomy_id=(select ifnull(max(term_taxonomy_id),0)from %sterm_taxonomy);", p.Options.PrefixTableName))
+	p.AddContent(fmt.Sprintf("set @max_post_id=(select ifnull(max(id),0)from %sposts);", p.Options.PrefixTableName))
 	p.AddContent(fmt.Sprintf("set @author_id=%d;", 1)) //todo author
 
 	if len(p.Indexer.GetAll()) > 0 {
@@ -205,7 +205,7 @@ func (p *pkg) SecondSaveToFile() error {
 	if len(idx.GetAll()) > 0 {
 		for k, _ := range idx.GetAll() {
 			if k != "" {
-				p.PreContent(fmt.Sprintf("set @%s=(select %steleport_item where guid='%s');", k, wpwc.Prefix, k))
+				p.PreContent(fmt.Sprintf("set @%s=(select id from %steleport_item where guid='%s');", k, wpwc.Prefix, k))
 			}
 		}
 	}
