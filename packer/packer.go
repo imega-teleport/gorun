@@ -26,11 +26,12 @@ type Options struct {
 }
 
 type pkg struct {
-	Options Options
-	Pack    teleport.Package
-	Indexer indexer.Indexer
-	PackQty int
-	Content string
+	Options     Options
+	PrimaryPack teleport.PrimaryPackage
+	SecondPack  teleport.SecondaryPackage
+	Indexer     indexer.Indexer
+	PackQty     int
+	Content     string
 }
 
 // New instance packer
@@ -44,18 +45,18 @@ func New(opt Options) Packer {
 
 func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 	for v := range in {
-		if p.IsFull(p.Pack) {
+		if p.IsFull(p.PrimaryPack) {
 			p.SaveToFile()
-			pack := teleport.Package{}
+			pack := teleport.PrimaryPackage{}
 			p.Content = ""
-			p.Pack = pack
+			p.PrimaryPack = pack
 			p.PackQty++
 		}
 
 		switch v.(type) {
 		case storage.Product:
 			p.Indexer.Set(teleport.UUID(v.(storage.Product).ID).String())
-			p.Pack.AddItem(teleport.Post{
+			p.PrimaryPack.AddItem(teleport.Post{
 				ID:       teleport.UUID(v.(storage.Product).ID),
 				AuthorID: 1,
 				Date:     time.Now(),
@@ -65,20 +66,20 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 				Name:     v.(storage.Product).Name,
 				Modified: time.Now(),
 			})
-			p.Pack.AddItem(teleport.TeleportItem{
+			p.PrimaryPack.AddItem(teleport.TeleportItem{
 				GUID: teleport.UUID(v.(storage.Product).ID),
 				Type: "post",
 				Date: time.Now(),
 			})
 		case storage.Group:
 			p.Indexer.Set(teleport.UUID(v.(storage.Group).ID).String())
-			p.Pack.AddItem(teleport.Term{
+			p.PrimaryPack.AddItem(teleport.Term{
 				ID:    teleport.UUID(v.(storage.Group).ID),
 				Name:  v.(storage.Group).Name,
 				Slug:  teleport.Slug(v.(storage.Group).Name),
 				Group: "0",
 			})
-			p.Pack.AddItem(teleport.TeleportItem{
+			p.PrimaryPack.AddItem(teleport.TeleportItem{
 				GUID: teleport.UUID(v.(storage.Group).ID),
 				Type: "term",
 				Date: time.Now(),
@@ -87,7 +88,7 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 	}
 }
 
-func (p *pkg) IsFull(pack teleport.Package) bool {
+func (p *pkg) IsFull(pack teleport.PrimaryPackage) bool {
 	return pack.Length >= p.Options.MaxBytes+p.Indexer.GetLength()+2000
 }
 
@@ -104,7 +105,7 @@ func (p *pkg) SaveToFile() error {
 	}
 
 	if p.PackQty == 1 {
-		p.AddContent("create table if not exists teleport_item(guid CHAR(32) NOT NULL,type CHAR(8) NOT NULL, id bigint, date datetime, KEY id (`id`)) ENGINE=InnoDB DEFAULT CHARSET=utf8;")
+		p.AddContent("create table if not exists teleport_item(guid char(32)not null,type char(8)not null,id bigint,date datetime,key id(`id`))engine=innodb default charset=utf8;")
 	}
 
 	p.AddContent("start transaction;")
@@ -120,17 +121,17 @@ func (p *pkg) SaveToFile() error {
 		}
 	}
 
-	if len(p.Pack.Term) > 0 {
+	if len(p.PrimaryPack.Term) > 0 {
 		builder := wpwc.BuilderTerm()
-		for _, v := range p.Pack.Term {
+		for _, v := range p.PrimaryPack.Term {
 			builder.AddTerm(v)
 		}
 		p.AddContent(fmt.Sprintf("%s;", squirrel.DebugSqlizer(builder)))
 	}
 
-	if len(p.Pack.Post) > 0 {
+	if len(p.PrimaryPack.Post) > 0 {
 		builder := wpwc.BuilderPost()
-		for _, v := range p.Pack.Post {
+		for _, v := range p.PrimaryPack.Post {
 			builder.AddPost(v)
 		}
 		p.AddContent(fmt.Sprintf("%s;", squirrel.DebugSqlizer(builder)))
@@ -138,7 +139,7 @@ func (p *pkg) SaveToFile() error {
 
 	if len(p.Indexer.GetAll()) > 0 {
 		builder := wpwc.BuilderTeleportItem()
-		for _, v := range p.Pack.TeleportItem {
+		for _, v := range p.PrimaryPack.TeleportItem {
 			builder.AddTeleportItem(v)
 		}
 		p.AddContent(fmt.Sprintf("%s;", squirrel.DebugSqlizer(builder)))
@@ -146,7 +147,7 @@ func (p *pkg) SaveToFile() error {
 
 	p.AddContent("commit;")
 	fmt.Printf("%s\n", p.Content)
-	//fmt.Println(p.Pack.Length)
+	//fmt.Println(p.PrimaryPack.Length)
 	//fmt.Println(p.Indexer.GetLength())
 
 	//w.WriteFile(fileName, content)
