@@ -112,8 +112,16 @@ func (p *pkg) SecondIsFull(pack teleport.SecondaryPackage) bool {
 	return pack.Length >= p.Options.MaxBytes+2000
 }
 
+func (p *pkg) PreContent(s string) {
+	p.Content = s + p.Content
+}
+
 func (p *pkg) AddContent(s string) {
 	p.Content = p.Content + s
+}
+
+func (p *pkg) ClearContent() {
+	p.Content = ""
 }
 
 func (p *pkg) SaveToFile() error {
@@ -125,7 +133,7 @@ func (p *pkg) SaveToFile() error {
 	}
 
 	if p.PackQty == 1 {
-		p.AddContent("create table if not exists teleport_item(guid char(32)not null,type char(8)not null,id bigint,date datetime,key id(`id`))engine=innodb default charset=utf8;")
+		p.AddContent(fmt.Sprintf("create table if not exists %steleport_item(guid char(32)not null,type char(8)not null,id bigint,date datetime,key id(`id`))engine=innodb default charset=utf8;", p.Options.PrefixTableName))
 	}
 
 	p.AddContent("start transaction;")
@@ -174,6 +182,7 @@ func (p *pkg) SaveToFile() error {
 }
 
 func (p *pkg) SecondSaveToFile() error {
+	p.ClearContent()
 	w := writer.NewWriter(fmt.Sprintf("sec/%s", p.Options.PrefixFileName), p.Options.PathToSave)
 	fileName := w.GetFileName(p.SecondPackQty)
 	fmt.Println(fileName)
@@ -181,13 +190,27 @@ func (p *pkg) SecondSaveToFile() error {
 		Prefix: p.Options.PrefixTableName,
 	}
 
+	idx := indexer.NewIndexer()
+
 	if len(p.SecondPack.TermTaxonomy) > 0 {
 		builder := wpwc.BuilderTermTaxonomy()
 		for _, v := range p.SecondPack.TermTaxonomy {
+			idx.Set(v.TermID.String())
+			idx.Set(v.Parent.String())
 			builder.AddTermTaxonomy(v)
 		}
-		fmt.Println(squirrel.DebugSqlizer(builder))
+		p.AddContent(squirrel.DebugSqlizer(builder))
 	}
+
+	if len(idx.GetAll()) > 0 {
+		for k, _ := range idx.GetAll() {
+			if k != "" {
+				p.PreContent(fmt.Sprintf("set @%s=(select %steleport_item where guid='%s');", k, wpwc.Prefix, k))
+			}
+		}
+	}
+
+	fmt.Println(p.Content)
 
 	return nil
 }
