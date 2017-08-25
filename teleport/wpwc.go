@@ -37,8 +37,9 @@ func (p *PrimaryPackage) AddItem(item interface{}) {
 }
 
 type SecondaryPackage struct {
-	TermTaxonomy []TermTaxonomy
-	Length       int
+	TermTaxonomy     []TermTaxonomy
+	TermRelationship []TermRelationship
+	Length           int
 }
 
 func (p *SecondaryPackage) AddItem(item interface{}) {
@@ -46,6 +47,9 @@ func (p *SecondaryPackage) AddItem(item interface{}) {
 	case TermTaxonomy:
 		p.Length = p.Length + item.(TermTaxonomy).SizeOf() + (lengthDefineVariable * 2) + lengthDefineValueSyntax
 		p.TermTaxonomy = append(p.TermTaxonomy, item.(TermTaxonomy))
+	case TermRelationship:
+		p.Length = p.Length + item.(TermRelationship).SizeOf() + (lengthDefineVariable * 2) + lengthDefineValueSyntax
+		p.TermRelationship = append(p.TermRelationship, item.(TermRelationship))
 	}
 }
 

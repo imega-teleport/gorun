@@ -81,6 +81,7 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 				Type: "post",
 				Date: time.Now(),
 			})
+
 		case storage.Group:
 			p.Indexer.Set(teleport.UUID(v.(storage.Group).ID).String())
 			p.PrimaryPack.AddItem(teleport.Term{
@@ -99,6 +100,12 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 				Taxonomy:    "product_cat",
 				Description: v.(storage.Group).Name,
 				Parent:      teleport.UUID(v.(storage.Group).ParentID),
+			})
+
+		case storage.ProductsGroups:
+			p.SecondPack.AddItem(teleport.TermRelationship{
+				ObjectID:       teleport.UUID(v.(storage.ProductsGroups).ProductID),
+				TermTaxonomyID: teleport.UUID(v.(storage.ProductsGroups).GroupID),
 			})
 		}
 	}
@@ -198,6 +205,16 @@ func (p *pkg) SecondSaveToFile() error {
 			idx.Set(v.TermID.String())
 			idx.Set(v.Parent.String())
 			builder.AddTermTaxonomy(v)
+		}
+		p.AddContent(squirrel.DebugSqlizer(builder))
+	}
+
+	if len(p.SecondPack.TermRelationship) > 0 {
+		builder:= wpwc.BuilderTermRelationships()
+		for _, v := range p.SecondPack.TermRelationship {
+			idx.Set(v.ObjectID.String())
+			idx.Set(v.TermTaxonomyID.String())
+			builder.AddTermRelationships(v)
 		}
 		p.AddContent(squirrel.DebugSqlizer(builder))
 	}

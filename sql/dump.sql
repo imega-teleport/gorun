@@ -275,9 +275,9 @@ DROP TABLE IF EXISTS `products_groups`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `products_groups` (
-  `parent_id` varchar(36) NOT NULL,
-  `id` varchar(36) NOT NULL,
-  KEY `record` (`parent_id`)
+  `product_id` varchar(36) NOT NULL,
+  `group_id` varchar(36) NOT NULL,
+  KEY `record` (`product_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 /*!40101 SET character_set_client = @saved_cs_client */;
 
