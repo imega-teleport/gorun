@@ -139,7 +139,7 @@ func (p *pkg) SaveToFile() error {
 	}
 
 	if p.PackQty == 1 {
-		p.AddContent(fmt.Sprintf("create table if not exists %steleport_item(guid char(32)not null,type char(8)not null,id bigint,date datetime,key id(`id`))engine=innodb default charset=utf8", p.Options.PrefixTableName))
+		p.AddContent(fmt.Sprintf("create table if not exists %steleport_item(guid char(32)not null,type char(8)not null,id bigint,date datetime,primary key(`guid`))engine=innodb default charset=utf8", p.Options.PrefixTableName))
 	}
 
 	p.AddContent("start transaction")

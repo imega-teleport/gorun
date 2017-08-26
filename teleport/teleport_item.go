@@ -20,7 +20,7 @@ func (t TeleportItem) SizeOf() int {
 
 func (w *Wpwc) BuilderTeleportItem() builder {
 	return builder{
-		squirrel.Insert(fmt.Sprintf("%steleport_item", w.Prefix)).Columns("guid", "type", "id", "date"),
+		squirrel.Insert(fmt.Sprintf("%steleport_item", w.Prefix)).Options("IGNORE").Columns("guid", "type", "id", "date"),
 	}
 }
 
