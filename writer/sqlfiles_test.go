@@ -11,7 +11,8 @@ import (
 func TestSqlFiles_writeFile(t *testing.T) {
 	fileName := "/tmp/testsqlfiles_writefile"
 	expected := "content"
-	err := writeFile(fileName, expected)
+	w := writerFiles{}
+	err := w.WriteFile(fileName, expected)
 	assert.NoError(t, err)
 
 	data, err := ioutil.ReadFile(fileName)

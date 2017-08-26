@@ -1,4 +1,4 @@
-CWD=/go/src/github.com/imega-teleport/db2file
+CWD=/go/src/github.com/imega-teleport/gorun
 
 build: test
 	@mkdir -p $(CURDIR)/test
@@ -19,7 +19,6 @@ build: test
 		--link server_db:server_db \
 		golang:1.8-alpine \
 		sh -c 'go build -v -o db2file && ./db2file -db test_teleport -path $(CWD)/test'
-	cat $(CURDIR)/test/output.sql
 
 db:
 	@touch $(CURDIR)/mysql.log
@@ -48,15 +47,6 @@ clean:
 test: clean db
 	@docker run --rm -v $(CURDIR):$(CWD) -w $(CWD) \
 		golang:1.8-alpine sh -c "go list ./... | grep -v 'vendor\|integration' | xargs go test"
-	@docker run --rm \
-		-e DB_USER=root \
-		-e DB_PASS=1 \
-		-e DB_HOST="server_db:3306" \
-		-e DB_NAME=test_teleport \
-		-v $(CURDIR):$(CWD) \
-		--link server_db:server_db \
-		-w $(CWD) \
-		golang:1.8-alpine sh -c "go test github.com/imega-teleport/db2file/integration"
 
 dep:
 	@docker run --rm \

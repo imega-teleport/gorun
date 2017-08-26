@@ -1,4 +1,4 @@
-package main
+package main // import "github.com/imega-teleport/gorun"
 
 import (
 	"database/sql"
