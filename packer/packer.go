@@ -9,7 +9,7 @@ import (
 	"github.com/imega-teleport/gorun/storage"
 	"github.com/imega-teleport/gorun/teleport"
 	"github.com/imega-teleport/gorun/writer"
-	"gopkg.in/Masterminds/squirrel.v1"
+	squirrel "gopkg.in/Masterminds/squirrel.v1"
 )
 
 // Packer is interface
@@ -134,7 +134,6 @@ func (p *pkg) ClearContent() {
 func (p *pkg) SaveToFile() error {
 	w := writer.NewWriter(p.Options.PrefixFileName, p.Options.PathToSave)
 	fileName := w.GetFileName(p.PackQty)
-	fmt.Println(fileName)
 	wpwc := teleport.Wpwc{
 		Prefix: p.Options.PrefixTableName,
 	}
@@ -180,19 +179,15 @@ func (p *pkg) SaveToFile() error {
 	}
 
 	p.AddContent("commit;")
-	fmt.Printf("%s\n", p.Content)
-	//fmt.Println(p.PrimaryPack.Length)
-	//fmt.Println(p.Indexer.GetLength())
 
-	//w.WriteFile(fileName, content)
-	return nil
+	err := w.WriteFile(fileName, p.Content)
+	return err
 }
 
 func (p *pkg) SecondSaveToFile() error {
 	p.ClearContent()
 	w := writer.NewWriter(fmt.Sprintf("sec/%s", p.Options.PrefixFileName), p.Options.PathToSave)
 	fileName := w.GetFileName(p.SecondPackQty)
-	fmt.Println(fileName)
 	wpwc := teleport.Wpwc{
 		Prefix: p.Options.PrefixTableName,
 	}
@@ -210,7 +205,7 @@ func (p *pkg) SecondSaveToFile() error {
 	}
 
 	if len(p.SecondPack.TermRelationship) > 0 {
-		builder:= wpwc.BuilderTermRelationships()
+		builder := wpwc.BuilderTermRelationships()
 		for _, v := range p.SecondPack.TermRelationship {
 			idx.Set(v.ObjectID.String())
 			idx.Set(v.TermTaxonomyID.String())
@@ -227,7 +222,6 @@ func (p *pkg) SecondSaveToFile() error {
 		}
 	}
 
-	fmt.Println(p.Content)
-
-	return nil
+	err := w.WriteFile(fileName, p.Content)
+	return err
 }

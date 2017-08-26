@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"fmt"
 	"sync"
+	"flag"
+	"os"
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/imega-teleport/gorun/packer"
@@ -12,8 +14,18 @@ import (
 )
 
 func main() {
+	user, pass, host := os.Getenv("DB_USER"), os.Getenv("DB_PASS"), os.Getenv("DB_HOST")
+
+	dbname := flag.String("db", "test_teleport", "Database name")
+	path := flag.String("path", "/tmp", "Save to path")
+	limit := flag.Int("limit", 500000, "Limit bytes")
+	prefixTable := flag.String("ptable", "wp_", "Prefix table name")
+	prefixFile := flag.String("pfile", "out", "Prefix file name")
+	flag.Parse()
+
+	dsn := fmt.Sprintf("mysql://%s:%s@tcp(%s)/%s", user, pass, host, *dbname)
+
 	log.Info("Start")
-	dsn := fmt.Sprintf("mysql://%s:%s@tcp(%s)/%s", "", "", "10.0.3.102:3306", "test_teleport")
 	db, err := sql.Open("mysql", dsn)
 	if err != nil {
 		log.Fatalf("Could not connect db, %s", err)
@@ -38,10 +50,10 @@ func main() {
 	errChan := make(chan error)
 
 	p := packer.New(packer.Options{
-		MaxBytes:        500000,
-		PrefixFileName:  "out",
-		PathToSave:      "/tmp",
-		PrefixTableName: "",
+		MaxBytes:        *limit,
+		PrefixFileName:  *prefixFile,
+		PathToSave:      *path,
+		PrefixTableName: *prefixTable,
 	})
 
 	wg.Add(1)
@@ -72,6 +84,7 @@ func main() {
 		p.SecondSaveToFile()
 		close(dataChan)
 		close(errChan)
+		log.Info("End work!")
 	}()
 
 	if err := <-errChan; err != nil {
