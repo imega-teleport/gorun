@@ -120,11 +120,11 @@ func (p *pkg) SecondIsFull(pack teleport.SecondaryPackage) bool {
 }
 
 func (p *pkg) PreContent(s string) {
-	p.Content = s + p.Content
+	p.Content = fmt.Sprintf("%s;", s) + p.Content
 }
 
 func (p *pkg) AddContent(s string) {
-	p.Content = p.Content + s
+	p.Content = p.Content + fmt.Sprintf("%s;", s)
 }
 
 func (p *pkg) ClearContent() {
@@ -139,18 +139,18 @@ func (p *pkg) SaveToFile() error {
 	}
 
 	if p.PackQty == 1 {
-		p.AddContent(fmt.Sprintf("create table if not exists %steleport_item(guid char(32)not null,type char(8)not null,id bigint,date datetime,key id(`id`))engine=innodb default charset=utf8;", p.Options.PrefixTableName))
+		p.AddContent(fmt.Sprintf("create table if not exists %steleport_item(guid char(32)not null,type char(8)not null,id bigint,date datetime,key id(`id`))engine=innodb default charset=utf8", p.Options.PrefixTableName))
 	}
 
-	p.AddContent("start transaction;")
-	p.AddContent(fmt.Sprintf("set @max_term_id=(select ifnull(max(term_id),0)from %sterms);", p.Options.PrefixTableName))
-	p.AddContent(fmt.Sprintf("set @max_term_taxonomy_id=(select ifnull(max(term_taxonomy_id),0)from %sterm_taxonomy);", p.Options.PrefixTableName))
-	p.AddContent(fmt.Sprintf("set @max_post_id=(select ifnull(max(id),0)from %sposts);", p.Options.PrefixTableName))
-	p.AddContent(fmt.Sprintf("set @author_id=%d;", 1)) //todo author
+	p.AddContent("start transaction")
+	p.AddContent(fmt.Sprintf("set @max_term_id=(select ifnull(max(term_id),0)from %sterms)", p.Options.PrefixTableName))
+	p.AddContent(fmt.Sprintf("set @max_term_taxonomy_id=(select ifnull(max(term_taxonomy_id),0)from %sterm_taxonomy)", p.Options.PrefixTableName))
+	p.AddContent(fmt.Sprintf("set @max_post_id=(select ifnull(max(id),0)from %sposts)", p.Options.PrefixTableName))
+	p.AddContent(fmt.Sprintf("set @author_id=%d", 1)) //todo author
 
 	if len(p.Indexer.GetAll()) > 0 {
 		for k, v := range p.Indexer.GetAll() {
-			p.AddContent(fmt.Sprintf("set @%s=%d;", k, v))
+			p.AddContent(fmt.Sprintf("set @%s=%d", k, v))
 		}
 	}
 
@@ -159,7 +159,7 @@ func (p *pkg) SaveToFile() error {
 		for _, v := range p.PrimaryPack.Term {
 			builder.AddTerm(v)
 		}
-		p.AddContent(fmt.Sprintf("%s;", squirrel.DebugSqlizer(builder)))
+		p.AddContent(squirrel.DebugSqlizer(builder))
 	}
 
 	if len(p.PrimaryPack.Post) > 0 {
@@ -167,7 +167,7 @@ func (p *pkg) SaveToFile() error {
 		for _, v := range p.PrimaryPack.Post {
 			builder.AddPost(v)
 		}
-		p.AddContent(fmt.Sprintf("%s;", squirrel.DebugSqlizer(builder)))
+		p.AddContent(squirrel.DebugSqlizer(builder))
 	}
 
 	if len(p.Indexer.GetAll()) > 0 {
@@ -175,10 +175,10 @@ func (p *pkg) SaveToFile() error {
 		for _, v := range p.PrimaryPack.TeleportItem {
 			builder.AddTeleportItem(v)
 		}
-		p.AddContent(fmt.Sprintf("%s;", squirrel.DebugSqlizer(builder)))
+		p.AddContent(squirrel.DebugSqlizer(builder))
 	}
 
-	p.AddContent("commit;")
+	p.AddContent("commit")
 
 	err := w.WriteFile(fileName, p.Content)
 	return err
@@ -217,7 +217,7 @@ func (p *pkg) SecondSaveToFile() error {
 	if len(idx.GetAll()) > 0 {
 		for k, _ := range idx.GetAll() {
 			if k != "" {
-				p.PreContent(fmt.Sprintf("set @%s=(select id from %steleport_item where guid='%s');", k, wpwc.Prefix, k))
+				p.PreContent(fmt.Sprintf("set @%s=(select id from %steleport_item where guid='%s')", k, wpwc.Prefix, k))
 			}
 		}
 	}

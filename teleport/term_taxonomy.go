@@ -30,7 +30,7 @@ func (t TermTaxonomy) SizeOf() int {
 
 func (w *Wpwc) BuilderTermTaxonomy() builder {
 	return builder{
-		squirrel.Insert(w.Prefix+"term_taxonomy").Columns("term_taxonomy_id", "term_id", "taxonomy", "description", "parent"),
+		squirrel.Insert(w.Prefix+"term_taxonomy").Columns("term_id", "taxonomy", "description", "parent"),
 	}
 }
 
@@ -43,6 +43,11 @@ func (b *builder) AddTermTaxonomy(t TermTaxonomy) {
 	}
 
 	*b = builder{
-		b.Values(squirrel.Expr(t.ID.String()), squirrel.Expr(t.TermID.ToVar()), t.Taxonomy, t.Description, parent),
+		b.Values(
+			squirrel.Expr(t.TermID.ToVar()),
+			t.Taxonomy,
+			t.Description,
+			parent,
+		),
 	}
 }
