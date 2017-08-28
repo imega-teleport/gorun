@@ -138,25 +138,12 @@ func (p *pkg) SaveToFile() error {
 		Prefix: p.Options.PrefixTableName,
 	}
 
-	if p.PackQty == 1 {
-		p.AddContent(fmt.Sprintf("create table if not exists %steleport_item(guid char(32)not null,type char(8)not null,id bigint,date datetime,primary key(`guid`))engine=innodb default charset=utf8", p.Options.PrefixTableName))
-	}
-
-	p.AddContent("start transaction")
-	p.AddContent(fmt.Sprintf("set @max_term_id=(select ifnull(max(term_id),0)from %sterms)", p.Options.PrefixTableName))
-	p.AddContent(fmt.Sprintf("set @max_term_taxonomy_id=(select ifnull(max(term_taxonomy_id),0)from %sterm_taxonomy)", p.Options.PrefixTableName))
-	p.AddContent(fmt.Sprintf("set @max_post_id=(select ifnull(max(id),0)from %sposts)", p.Options.PrefixTableName))
-	p.AddContent(fmt.Sprintf("set @author_id=%d", 1)) //todo author
-
-	if len(p.Indexer.GetAll()) > 0 {
-		for k, v := range p.Indexer.GetAll() {
-			p.AddContent(fmt.Sprintf("set @%s=%d", k, v))
-		}
-	}
+	idx := indexer.NewIndexer()
 
 	if len(p.PrimaryPack.Term) > 0 {
 		builder := wpwc.BuilderTerm()
 		for _, v := range p.PrimaryPack.Term {
+			idx.Set(v.ID.String())
 			builder.AddTerm(v)
 		}
 		p.AddContent(squirrel.DebugSqlizer(builder))
@@ -165,6 +152,7 @@ func (p *pkg) SaveToFile() error {
 	if len(p.PrimaryPack.Post) > 0 {
 		builder := wpwc.BuilderPost()
 		for _, v := range p.PrimaryPack.Post {
+			idx.Set(v.ID.String())
 			builder.AddPost(v)
 		}
 		p.AddContent(squirrel.DebugSqlizer(builder))
@@ -173,12 +161,31 @@ func (p *pkg) SaveToFile() error {
 	if len(p.Indexer.GetAll()) > 0 {
 		builder := wpwc.BuilderTeleportItem()
 		for _, v := range p.PrimaryPack.TeleportItem {
+			idx.Set(v.GUID.String())
 			builder.AddTeleportItem(v)
 		}
 		p.AddContent(squirrel.DebugSqlizer(builder))
 	}
 
+	if len(idx.GetAll()) > 0 {
+		for k, _ := range idx.GetAll() {
+			if k != "" {
+				p.PreContent(fmt.Sprintf("set @%s=%d", k, p.Indexer.Get(k)))
+			}
+		}
+	}
+
 	p.AddContent("commit")
+
+	p.PreContent(fmt.Sprintf("set @author_id=%d", 1)) //todo author
+	p.PreContent(fmt.Sprintf("set @max_post_id=(select ifnull(max(id),0)from %sposts)", p.Options.PrefixTableName))
+	p.PreContent(fmt.Sprintf("set @max_term_taxonomy_id=(select ifnull(max(term_taxonomy_id),0)from %sterm_taxonomy)", p.Options.PrefixTableName))
+	p.PreContent(fmt.Sprintf("set @max_term_id=(select ifnull(max(term_id),0)from %sterms)", p.Options.PrefixTableName))
+	p.PreContent("start transaction")
+
+	if p.PackQty == 1 {
+		p.PreContent(fmt.Sprintf("create table if not exists %steleport_item(guid char(32)not null,type char(8)not null,id bigint,date datetime,primary key(`guid`))engine=innodb default charset=utf8", p.Options.PrefixTableName))
+	}
 
 	err := w.WriteFile(fileName, p.Content)
 	return err
