@@ -82,6 +82,7 @@ func main() {
 		wg.Wait()
 		p.SaveToFile()
 		p.SecondSaveToFile()
+		p.ThirdPackSaveToFile()
 		close(dataChan)
 		close(errChan)
 		log.Info("End work!")

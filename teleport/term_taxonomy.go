@@ -17,15 +17,15 @@ func (i taxonomyID) String() string {
 }
 
 type TermTaxonomy struct {
-	ID          taxonomyID
-	TermID      UUID
-	Taxonomy    string
-	Description string
-	Parent      UUID
+	ID           taxonomyID
+	TermID       UUID
+	Taxonomy     string
+	Description  string
+	ParentTermID UUID
 }
 
 func (t TermTaxonomy) SizeOf() int {
-	return lengthDefineIndex + len(t.TermID) + len(t.Taxonomy) + len(t.Description) + len(t.Parent)
+	return lengthDefineIndex + len(t.TermID) + len(t.Taxonomy) + len(t.Description) + len(t.ParentTermID)
 }
 
 func (w *Wpwc) BuilderTermTaxonomy() builder {
@@ -36,8 +36,8 @@ func (w *Wpwc) BuilderTermTaxonomy() builder {
 
 func (b *builder) AddTermTaxonomy(t TermTaxonomy) {
 	var parent interface{}
-	if t.Parent != "" {
-		parent = squirrel.Expr(t.Parent.ToVar())
+	if t.ParentTermID != "" {
+		parent = squirrel.Expr(t.ParentTermID.ToVar())
 	} else {
 		parent = ""
 	}

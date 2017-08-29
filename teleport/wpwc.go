@@ -15,14 +15,14 @@ const (
 	lengthDefineValueSyntax = 13
 )
 
-type PrimaryPackage struct {
+type FirstPackage struct {
 	TeleportItem []TeleportItem
 	Term         []Term
 	Post         []Post
 	Length       int
 }
 
-func (p *PrimaryPackage) AddItem(item interface{}) {
+func (p *FirstPackage) AddItem(item interface{}) {
 	switch item.(type) {
 	case TeleportItem:
 		p.Length = p.Length + item.(TeleportItem).SizeOf() + lengthDefineValueSyntax
@@ -36,17 +36,26 @@ func (p *PrimaryPackage) AddItem(item interface{}) {
 	}
 }
 
-type SecondaryPackage struct {
+type SecondPackage struct {
 	TermTaxonomy     []TermTaxonomy
-	TermRelationship []TermRelationship
 	Length           int
 }
 
-func (p *SecondaryPackage) AddItem(item interface{}) {
+func (p *SecondPackage) AddItem(item interface{}) {
 	switch item.(type) {
 	case TermTaxonomy:
 		p.Length = p.Length + item.(TermTaxonomy).SizeOf() + (lengthDefineVariable * 2) + lengthDefineValueSyntax
 		p.TermTaxonomy = append(p.TermTaxonomy, item.(TermTaxonomy))
+	}
+}
+
+type ThirdPackage struct {
+	TermRelationship []TermRelationship
+	Length           int
+}
+
+func (p *ThirdPackage) AddItem(item interface{}) {
+	switch item.(type) {
 	case TermRelationship:
 		p.Length = p.Length + item.(TermRelationship).SizeOf() + (lengthDefineVariable * 2) + lengthDefineValueSyntax
 		p.TermRelationship = append(p.TermRelationship, item.(TermRelationship))
