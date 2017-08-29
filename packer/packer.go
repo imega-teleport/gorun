@@ -114,7 +114,6 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 			})
 
 		case storage.ProductsGroups:
-			fmt.Println("====")
 			p.ThirdPack.AddItem(teleport.TermRelationship{
 				ObjectID:       teleport.UUID(v.(storage.ProductsGroups).ProductID),
 				TermTaxonomyID: teleport.UUID(v.(storage.ProductsGroups).GroupID),
@@ -253,7 +252,7 @@ func (p *pkg) ThirdPackSaveToFile() error {
 	if len(p.ThirdPack.TermRelationship) > 0 {
 		builder := wpwc.BuilderTermRelationships()
 		for _, v := range p.ThirdPack.TermRelationship {
-			idxTermTaxonomy.Set(v.ObjectID.String())
+			idxPost.Set(v.ObjectID.String())
 			idxTermTaxonomy.Set(v.TermTaxonomyID.String())
 			builder.AddTermRelationships(v)
 		}
