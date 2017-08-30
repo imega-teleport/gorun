@@ -5,3 +5,4 @@ rel
 .DS_Store
 test
 db2file
+tmp/

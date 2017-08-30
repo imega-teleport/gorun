@@ -92,6 +92,11 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 				Type: "post",
 				Date: time.Now(),
 			})
+			p.ThirdPack.AddItem(teleport.PostMeta{
+				PostID: teleport.UUID(v.(storage.Product).ID),
+				Key: "_sku",
+				Value: v.(storage.Product).Article,
+			})
 
 		case storage.Group:
 			p.Indexer.Set(teleport.UUID(v.(storage.Group).ID).String())
@@ -255,6 +260,15 @@ func (p *pkg) ThirdPackSaveToFile() error {
 			idxPost.Set(v.ObjectID.String())
 			idxTermTaxonomy.Set(v.TermTaxonomyID.String())
 			builder.AddTermRelationships(v)
+		}
+		p.AddContent(squirrel.DebugSqlizer(builder))
+	}
+
+	if len(p.ThirdPack.PostMeta) > 0 {
+		builder := wpwc.BuilderPostMeta()
+		for _, v := range p.ThirdPack.PostMeta {
+			idxPost.Set(v.PostID.String())
+			builder.AddrPostMeta(v)
 		}
 		p.AddContent(squirrel.DebugSqlizer(builder))
 	}

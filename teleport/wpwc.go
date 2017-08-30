@@ -37,8 +37,8 @@ func (p *FirstPackage) AddItem(item interface{}) {
 }
 
 type SecondPackage struct {
-	TermTaxonomy     []TermTaxonomy
-	Length           int
+	TermTaxonomy []TermTaxonomy
+	Length       int
 }
 
 func (p *SecondPackage) AddItem(item interface{}) {
@@ -51,6 +51,7 @@ func (p *SecondPackage) AddItem(item interface{}) {
 
 type ThirdPackage struct {
 	TermRelationship []TermRelationship
+	PostMeta         []PostMeta
 	Length           int
 }
 
@@ -59,6 +60,9 @@ func (p *ThirdPackage) AddItem(item interface{}) {
 	case TermRelationship:
 		p.Length = p.Length + item.(TermRelationship).SizeOf() + (lengthDefineVariable * 2) + lengthDefineValueSyntax
 		p.TermRelationship = append(p.TermRelationship, item.(TermRelationship))
+	case PostMeta:
+		p.Length = p.Length + item.(PostMeta).SizeOf()
+		p.PostMeta = append(p.PostMeta, item.(PostMeta))
 	}
 }
 
