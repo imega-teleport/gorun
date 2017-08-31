@@ -9,7 +9,7 @@ import (
 	"github.com/imega-teleport/gorun/storage"
 	"github.com/imega-teleport/gorun/teleport"
 	"github.com/imega-teleport/gorun/writer"
-	squirrel "gopkg.in/Masterminds/squirrel.v1"
+	"gopkg.in/Masterminds/squirrel.v1"
 )
 
 // Packer is interface
@@ -27,8 +27,17 @@ type Options struct {
 	PrefixTableName string
 }
 
+type OptionsExport struct {
+	Weight    string `json: "weight"`
+	Length    string `json: "length"`
+	Width     string `json: "width"`
+	Height    string `json: "height"`
+	TypePrice string `json: "type_price"`
+}
+
 type pkg struct {
 	Options       Options
+	OptionsExport *OptionsExport
 	FirstPack     teleport.FirstPackage
 	SecondPack    teleport.SecondPackage
 	ThirdPack     teleport.ThirdPackage
@@ -40,9 +49,10 @@ type pkg struct {
 }
 
 // New instance packer
-func New(opt Options) Packer {
+func New(opt Options, optsEx *OptionsExport) Packer {
 	return &pkg{
 		Options:       opt,
+		OptionsExport: optsEx,
 		Indexer:       indexer.NewIndexer(),
 		FirstPackQty:  1,
 		SecondPackQty: 1,
@@ -51,6 +61,12 @@ func New(opt Options) Packer {
 }
 
 func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
+	postmeta := map[string]string{
+		p.OptionsExport.Length: "_length",
+		p.OptionsExport.Height: "_height",
+		p.OptionsExport.Weight: "_weight",
+		p.OptionsExport.Width:  "_width",
+	}
 	for v := range in {
 		if p.IsFull(p.FirstPack) {
 			p.SaveToFile()
@@ -94,8 +110,8 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 			})
 			p.ThirdPack.AddItem(teleport.PostMeta{
 				PostID: teleport.UUID(v.(storage.Product).ID),
-				Key: "_sku",
-				Value: v.(storage.Product).Article,
+				Key:    "_sku",
+				Value:  v.(storage.Product).Article,
 			})
 
 		case storage.Group:
@@ -122,6 +138,13 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 			p.ThirdPack.AddItem(teleport.TermRelationship{
 				ObjectID:       teleport.UUID(v.(storage.ProductsGroups).ProductID),
 				TermTaxonomyID: teleport.UUID(v.(storage.ProductsGroups).GroupID),
+			})
+
+		case storage.ProductsPropertiesSpecial:
+			p.ThirdPack.AddItem(teleport.PostMeta{
+				PostID: teleport.UUID(v.(storage.ProductsPropertiesSpecial).ProductID),
+				Key:    postmeta[v.(storage.ProductsPropertiesSpecial).PropertyID],
+				Value:  v.(storage.ProductsPropertiesSpecial).Value,
 			})
 		}
 	}

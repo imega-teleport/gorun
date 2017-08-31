@@ -11,6 +11,7 @@ import (
 	"github.com/imega-teleport/gorun/packer"
 	"github.com/imega-teleport/gorun/storage"
 	log "github.com/sirupsen/logrus"
+	"encoding/json"
 )
 
 func main() {
@@ -21,7 +22,14 @@ func main() {
 	limit := flag.Int("limit", 500000, "Limit bytes")
 	prefixTable := flag.String("ptable", "wp_", "Prefix table name")
 	prefixFile := flag.String("pfile", "out", "Prefix file name")
+	options := flag.String("options", "{}", "Options export")
 	flag.Parse()
+
+	optsExport := &packer.OptionsExport{}
+	err := json.Unmarshal([]byte(*options), optsExport)
+	if err != nil {
+		log.Fatalf("Could not read options, %s", err)
+	}
 
 	dsn := fmt.Sprintf("mysql://%s:%s@tcp(%s)/%s", user, pass, host, *dbname)
 
@@ -54,7 +62,7 @@ func main() {
 		PrefixFileName:  *prefixFile,
 		PathToSave:      *path,
 		PrefixTableName: *prefixTable,
-	})
+	}, optsExport)
 
 	wg.Add(1)
 	go func() {
@@ -73,6 +81,25 @@ func main() {
 		defer wg.Done()
 		s.GetProductsGroups(dataChan, errChan)
 	}()
+
+	specialProperty := []string{
+		optsExport.Width,
+		optsExport.Weight,
+		optsExport.Height,
+		optsExport.Length,
+	}
+
+	wg.Add(1)
+	go func() {
+		defer wg.Done()
+		s.GetProductsProperties(dataChan, errChan, specialProperty)
+	}()
+
+	/*wg.Add(1)
+	go func() {
+		defer wg.Done()
+		s.GetProductsPropertiesSpecial(dataChan, errChan, specialProperty)
+	}()*/
 
 	go func() {
 		p.Listen(dataChan, errChan)
