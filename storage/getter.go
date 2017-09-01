@@ -9,7 +9,7 @@ func (s *storage) getRecords(out chan<- interface{}, e chan<- error, dql string,
 	i := 0
 	for {
 		hasResults := false
-		rows, err := s.db.Query(fmt.Sprintf("%s limit %d, 10", dql, i))
+		rows, err := s.db.Query(fmt.Sprintf("%s limit %d, %d", dql, i, s.limit))
 		if err != nil {
 			e <- err
 			break
@@ -24,7 +24,7 @@ func (s *storage) getRecords(out chan<- interface{}, e chan<- error, dql string,
 		}
 
 		if hasResults {
-			i = i + 10
+			i = i + s.limit
 		} else {
 			break
 		}

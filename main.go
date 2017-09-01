@@ -52,7 +52,7 @@ func main() {
 	}()
 
 	wg := sync.WaitGroup{}
-	s := storage.NewStorage(db)
+	s := storage.NewStorage(db, 10000)
 
 	dataChan := make(chan interface{}, 10)
 	errChan := make(chan error)
@@ -95,11 +95,11 @@ func main() {
 		s.GetProductsProperties(dataChan, errChan, specialProperty)
 	}()
 
-	/*wg.Add(1)
+	wg.Add(1)
 	go func() {
 		defer wg.Done()
 		s.GetProductsPropertiesSpecial(dataChan, errChan, specialProperty)
-	}()*/
+	}()
 
 	go func() {
 		p.Listen(dataChan, errChan)
@@ -109,7 +109,7 @@ func main() {
 		wg.Wait()
 		p.SaveToFile()
 		p.SecondSaveToFile()
-		p.ThirdPackSaveToFile()
+		p.ThirdPackSaveToFile(true)
 		close(dataChan)
 		close(errChan)
 		log.Info("End work!")

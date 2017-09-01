@@ -13,11 +13,13 @@ type Storage interface {
 }
 
 type storage struct {
-	db *sql.DB
+	db    *sql.DB
+	limit int
 }
 
-func NewStorage(db *sql.DB) Storage {
+func NewStorage(db *sql.DB, limit int) Storage {
 	return &storage{
-		db: db,
+		db:    db,
+		limit: limit,
 	}
 }

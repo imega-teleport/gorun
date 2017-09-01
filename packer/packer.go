@@ -5,10 +5,12 @@ import (
 
 	"time"
 
+	slugmaker "github.com/gosimple/slug"
 	"github.com/imega-teleport/gorun/indexer"
 	"github.com/imega-teleport/gorun/storage"
 	"github.com/imega-teleport/gorun/teleport"
 	"github.com/imega-teleport/gorun/writer"
+	"github.com/yvasiyarov/php_session_decoder/php_serialize"
 	"gopkg.in/Masterminds/squirrel.v1"
 )
 
@@ -17,7 +19,7 @@ type Packer interface {
 	Listen(in <-chan interface{}, e chan<- error)
 	SaveToFile() error
 	SecondSaveToFile() error
-	ThirdPackSaveToFile() error
+	ThirdPackSaveToFile(latest bool) error
 }
 
 type Options struct {
@@ -36,16 +38,22 @@ type OptionsExport struct {
 }
 
 type pkg struct {
-	Options       Options
-	OptionsExport *OptionsExport
-	FirstPack     teleport.FirstPackage
-	SecondPack    teleport.SecondPackage
-	ThirdPack     teleport.ThirdPackage
-	Indexer       indexer.Indexer
-	FirstPackQty  int
-	SecondPackQty int
-	ThirdPackQty  int
-	Content       string
+	Options              Options
+	OptionsExport        *OptionsExport
+	FirstPack            teleport.FirstPackage
+	SecondPack           teleport.SecondPackage
+	ThirdPack            teleport.ThirdPackage
+	PropertiesCollection propertiesCollection
+	Indexer              indexer.Indexer
+	FirstPackQty         int
+	SecondPackQty        int
+	ThirdPackQty         int
+	Content              string
+}
+
+type propertiesCollection struct {
+	ProductID string
+	Items     []storage.ProductsProperties
 }
 
 // New instance packer
@@ -84,7 +92,7 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 		}
 
 		if p.ThirdPackIsFull(p.ThirdPack) {
-			p.ThirdPackSaveToFile()
+			p.ThirdPackSaveToFile(false)
 			pack := teleport.ThirdPackage{}
 			p.ThirdPack = pack
 			p.ThirdPackQty++
@@ -139,6 +147,40 @@ func (p *pkg) Listen(in <-chan interface{}, e chan<- error) {
 				ObjectID:       teleport.UUID(v.(storage.ProductsGroups).ProductID),
 				TermTaxonomyID: teleport.UUID(v.(storage.ProductsGroups).GroupID),
 			})
+
+		case storage.ProductsProperties:
+			if p.PropertiesCollection.ProductID != "" && p.PropertiesCollection.ProductID == v.(storage.ProductsProperties).ProductID {
+				p.PropertiesCollection.Items = append(p.PropertiesCollection.Items, v.(storage.ProductsProperties))
+			} else {
+				if p.PropertiesCollection.ProductID != v.(storage.ProductsProperties).ProductID {
+					encoder := php_serialize.NewSerializer()
+					source := map[php_serialize.PhpValue]php_serialize.PhpValue{}
+
+					for _, v := range p.PropertiesCollection.Items {
+						source[v.PropertyName] = map[php_serialize.PhpValue]php_serialize.PhpValue{
+							"name":         v.PropertyName,
+							"value":        v.Value,
+							"position":     "0",
+							"is_visible":   "1",
+							"is_variation": "0",
+							"is_taxonomy":  "0",
+						}
+					}
+
+					attrs, _ := encoder.Encode(source)
+					p.ThirdPack.AddItem(teleport.PostMeta{
+						PostID: teleport.UUID(v.(storage.ProductsProperties).ProductID),
+						Key:    "_product_attributes",
+						Value:  attrs,
+					})
+				}
+				p.PropertiesCollection = propertiesCollection{
+					ProductID: v.(storage.ProductsProperties).ProductID,
+					Items: []storage.ProductsProperties{
+						v.(storage.ProductsProperties),
+					},
+				}
+			}
 
 		case storage.ProductsPropertiesSpecial:
 			p.ThirdPack.AddItem(teleport.PostMeta{
@@ -266,12 +308,21 @@ func (p *pkg) SecondSaveToFile() error {
 	return err
 }
 
-func (p *pkg) ThirdPackSaveToFile() error {
+func (p *pkg) ThirdPackSaveToFile(latest bool) error {
 	p.ClearContent()
 	w := writer.NewWriter(fmt.Sprintf("thi/%s", p.Options.PrefixFileName), p.Options.PathToSave)
 	fileName := w.GetFileName(p.SecondPackQty)
 	wpwc := teleport.Wpwc{
 		Prefix: p.Options.PrefixTableName,
+	}
+
+	if latest {
+		attrs, _ := p.SerializationProperties(p.PropertiesCollection.Items)
+		p.ThirdPack.AddItem(teleport.PostMeta{
+			PostID: teleport.UUID(p.PropertiesCollection.ProductID),
+			Key:    "_product_attributes",
+			Value:  attrs,
+		})
 	}
 
 	idxTermTaxonomy := indexer.NewIndexer()
@@ -314,4 +365,23 @@ func (p *pkg) ThirdPackSaveToFile() error {
 
 	err := w.WriteFile(fileName, p.Content)
 	return err
+}
+
+//@todo в teleport
+func (p *pkg) SerializationProperties(items []storage.ProductsProperties) (string, error) {
+	encoder := php_serialize.NewSerializer()
+	source := map[php_serialize.PhpValue]php_serialize.PhpValue{}
+
+	for _, v := range items {
+		source[slugmaker.Make(v.PropertyName)] = map[php_serialize.PhpValue]php_serialize.PhpValue{
+			"name":         v.PropertyName,
+			"value":        v.Value,
+			"position":     "0",
+			"is_visible":   "1",
+			"is_variation": "0",
+			"is_taxonomy":  "0",
+		}
+	}
+
+	return encoder.Encode(source)
 }

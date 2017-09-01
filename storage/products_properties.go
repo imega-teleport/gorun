@@ -53,7 +53,7 @@ func (s *storage) GetProductsPropertiesSpecial(out chan<- interface{}, e chan<- 
 		}
 	}
 
-	if len(cond) > 0 {
+	if len(cond) == 0 {
 		return
 	}
 
